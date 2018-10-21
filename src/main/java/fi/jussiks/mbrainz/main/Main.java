@@ -1,9 +1,9 @@
 package fi.jussiks.mbrainz.main;
 
 import fi.jussiks.mbrainz.enums.Entity;
-import fi.jussiks.mbrainz.enums.Inc;
 import fi.jussiks.mbrainz.enums.ResultFormat;
 import fi.jussiks.mbrainz.request.MBrainzLookup;
+import fi.jussiks.mbrainz.request.MBrainzQuery;
 
 public class Main {
 	private static String[] albumIds = {
@@ -41,12 +41,18 @@ public class Main {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		MBrainzLookup lookup = new MBrainzLookup("mbrainzclient", "0.1", "jukrsund@student.jyu.fi");
-		//String s = lookup.getArtist(artistIds[0]);
-		//System.out.println(s);
+		MBrainzLookup lookup = new MBrainzLookup("mbrainzclient", "0.1", "kerosiini@gmail.com");
+		lookup.setEntity(Entity.ARTIST);
+		lookup.setMbid(artistIds[1]);
 		lookup.setResultFormat(ResultFormat.JSON);
+		System.out.println(lookup.doRequest());
 		
-		String s = lookup.doLookup(Entity.ARTIST, artistIds[0], Inc.RELEASE_GROUPS, Inc.ARTISTS);
-		System.out.println(s);
+		MBrainzQuery mbq = new MBrainzQuery("mbrainzclient", "0.1", "kerosiini@gmail.com");
+		mbq.addQuery("artist", "rytmihäiriö");
+		mbq.addQuery("country", "FI");
+		mbq.setEntity(Entity.ARTIST);
+		System.out.println(mbq.doRequest());
+		
+
 	}
 }
