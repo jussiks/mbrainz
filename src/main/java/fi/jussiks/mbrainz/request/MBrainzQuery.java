@@ -3,16 +3,13 @@ package fi.jussiks.mbrainz.request;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.Query;
 
 import fi.jussiks.mbrainz.enums.Entity;
 import fi.jussiks.mbrainz.enums.Inc;
+import fi.jussiks.mbrainz.util.LuceneQueryBuilder;
 
 /**
  * Provides methods for querying the MusicBrainz database.
@@ -20,9 +17,7 @@ import fi.jussiks.mbrainz.enums.Inc;
  * @author jussi
  */
 public class MBrainzQuery extends MBrainzRequestImpl {
-	private Builder queryBuilder = new BooleanQuery.Builder();
-	private Entity entity;
-	private Inc[] incs;
+	private LuceneQueryBuilder queryBuilder = new LuceneQueryBuilder();
 	
 	/**
 	 * Initializes a new MBrainzQuery instance. Each request needs to include contact
@@ -37,31 +32,50 @@ public class MBrainzQuery extends MBrainzRequestImpl {
 	}
 	
 	/**
+	 * Initializes a new MBrainzQuery instance. Each request needs to include contact
+	 * information so MusicBrainz can contact the application maintainers if necessary.
+	 * 
+	 * @param appName	name of the application
+	 * @param version	version of the application
+	 * @param contact	email or url for contacting application maintainers
+	 * @param entity	entity that will be queried
+	 */
+	public MBrainzQuery(String appName, String version, String contact, Entity entity) {
+		super(appName, version, contact, entity);
+	}
+	
+	/**
+	 * Initializes a new MBrainzQuery instance. Each request needs to include contact
+	 * information so MusicBrainz can contact the application maintainers if necessary.
+	 * 
+	 * @param appName	name of the application
+	 * @param version	version of the application
+	 * @param contact	email or url for contacting application maintainers
+	 * @param entity	entity that will be queried
+	 * @param incs		subqueries to be included in the query
+	 */
+	public MBrainzQuery(String appName, String version, String contact, Entity entity, Inc...incs) {
+		super(appName, version, contact, entity, incs);
+	}
+	
+	/**
 	 * Adds new Lucene query parameter to the query.
 	 * @param field		field used in query
 	 * @param value		value of field
 	 */
 	public void addQuery(String field, String value) {
-		StandardAnalyzer analyzer = new StandardAnalyzer();
-		Query query;
-		try {
-			query = new QueryParser(field, analyzer).parse(value);
-			queryBuilder.add(query, BooleanClause.Occur.MUST);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
+		queryBuilder.addQuery(field, value);
 	}
 	
-	@Override
 	/**
-	 * Performs query on MusicBrainz entity. Throws NullPointerException if entity has
-	 * not been set.
+	 * Adds new Lucene query parameter to the query.
+	 * @param field		field used in query
+	 * @param value		value of field
+	 * @param occur		boolean clause that determines how the search term should be
+	 * 					added to the query (for example MUST or SHOULD)
 	 */
-	public String doRequest() {		
-		if (entity == null)
-			throw new NullPointerException("Entity must be defined.");
-		Query query = queryBuilder.build();
-		return doRequest(entity, query, incs);
+	public void addQuery(String field, String value, BooleanClause.Occur occur) {
+		queryBuilder.addQuery(field, value, occur);
 	}
 	
 	/**
@@ -82,69 +96,61 @@ public class MBrainzQuery extends MBrainzRequestImpl {
 	 * @return 			results as String
 	 */
 	public String doRequest(Entity entity, Query query, Inc... incs) {
-		return doRequest(entity, query.toString(), incs);
+		queryBuilder = new LuceneQueryBuilder();
+		queryBuilder.addQuery(query);
+		super.entity = entity;
+		super.incs = incs;
+		return super.doRequest();
 	}
 	
 	/**
 	 * Performs query on MusicBrainz entity.
-	 * @param entity	MusicBrainz entity
-	 * @param query		Lucene formatted String 
-	 * @return 			results as String
+	 * @param entity		MusicBrainz entity
+	 * @param params		Lucene formatted String of query parameters
+	 * @return 				results as String
+	 * @throws ParseException 
 	 */
-	public String doRequest(Entity entity, String params) {
+	public String doRequest(Entity entity, String params) throws ParseException {
 		return doRequest(entity, params, (Inc[]) null);
 	}
 	
 	/**
 	 * Performs query on MusicBrainz entity.
 	 * @param entity	MusicBrainz entity
-	 * @param query		Lucene formatted String 
+	 * @param query		Lucene formatted String of query parameters
 	 * @param incs		included subqueries
 	 * @return 			results as String
+	 * @throws ParseException 
 	 */
-	public String doRequest(Entity entity, String queryParams, Inc... incs) {
-		String params = "";
+	public String doRequest(Entity entity, String query, Inc... incs) throws ParseException {
+		super.entity = entity;
+		super.incs = incs;
+
+		queryBuilder = new LuceneQueryBuilder();	
+		queryBuilder.addQuery(query);
+		return super.doRequest();
+	}
+
+	/**
+	 * @return query as String
+	 */
+	public String getQuery() {
+		return queryBuilder.toString();
+	}
+
+	@Override
+	/**
+	 * @return query parameters in URL encoded String
+	 */
+	public String getParameters() {
+		if (super.entity == null)
+			return null;
 		try {
-			params = String.format("%s?query=%s", entity.toString(), URLEncoder.encode(queryParams, "UTF-8"));
+			return String.format("%s?query=%s", super.entity.toString(), URLEncoder.encode(getQuery(), "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			return null;
 		}
-		return super.doRequest(params, incs);
-	}
-
-	/**
-	 * @return MusicBrainz entity used in query
-	 */
-	public Entity getEntity() {
-		return entity;
-	}
-
-	/**
-	 * @param entity 	 MusicBrainz entity used in query
-	 */
-	public void setEntity(Entity entity) {
-		this.entity = entity;
-	}
-
-	/**
-	 * @return subqueries included in query
-	 */
-	public Inc[] getIncs() {
-		return incs;
-	}
-
-	/**
-	 * @param incs	 subqueries included in query
-	 */
-	public void setIncs(Inc[] incs) {
-		this.incs = incs;
-	}
-
-	/**
-	 * @return query parameters as String
-	 */
-	public String getQueryParameters() {
-		return queryBuilder.build().toString();
 	}
 }

@@ -9,9 +9,7 @@ import fi.jussiks.mbrainz.enums.Inc;
  * @author jussi
  */
 public class MBrainzLookup extends MBrainzRequestImpl {
-	private Entity entity;
 	private String mbid;
-	private Inc[] incs;
 	
 	/**
 	 * Initializes a new MBrainzLookup instance. Each request needs to include contact
@@ -25,16 +23,31 @@ public class MBrainzLookup extends MBrainzRequestImpl {
 		super(appName, version, contact);
 	}
 	
-	@Override
 	/**
-	 * Performs a MusicBrainz lookup. Throws NullPointer if entity or MusicBrainz id 
-	 * have not been set.
-	 * @return 		result as String
+	 * Initializes a new MBrainzLookup instance. Each request needs to include contact
+	 * information so MusicBrainz can contact the application maintainers if necessary.
+	 * 
+	 * @param appName	name of the application
+	 * @param version	version of the application
+	 * @param contact	email or url for contacting application maintainers
+	 * @param entity	entity in MusicBrainz database
 	 */
-	public String doRequest() {
-		if (entity == null || mbid == null)
-			throw new NullPointerException("Entity and mbid must be defined.");
-		return doRequest(entity, mbid, incs);
+	public MBrainzLookup(String appName, String version, String contact, Entity entity) {
+		super(appName, version, contact, entity);
+	}
+	
+	/**
+	 * Initializes a new MBrainzLookup instance. Each request needs to include contact
+	 * information so MusicBrainz can contact the application maintainers if necessary.
+	 * 
+	 * @param appName	name of the application
+	 * @param version	version of the application
+	 * @param contact	email or url for contacting application maintainers
+	 * @param entity	entity in MusicBrainz database
+	 * @param incs		subqueries included in the lookup
+	 */
+	public MBrainzLookup(String appName, String version, String contact, Entity entity, Inc...incs) {
+		super(appName, version, contact, entity, incs);
 	}
 	
 	/**
@@ -115,22 +128,10 @@ public class MBrainzLookup extends MBrainzRequestImpl {
 	 * @return 			result as String
 	 */
 	public String doRequest(Entity entity, String mbid, Inc... incs) {
-		String params = String.format("%s/%s", entity.toString(), mbid);
-		return super.doRequest(params, incs);
-	}
-
-	/**
-	 * @return value of entity used in lookup.
-	 */
-	public Entity getEntity() {
-		return entity;
-	}
-
-	/**
-	 * @param entity 	value of entity used in lookup.
-	 */
-	public void setEntity(Entity entity) {
-		this.entity = entity;
+		super.entity = entity;
+		super.incs = incs;
+		this.mbid = mbid;
+		return super.doRequest();
 	}
 
 	/**
@@ -147,17 +148,13 @@ public class MBrainzLookup extends MBrainzRequestImpl {
 		this.mbid = mbid;
 	}
 
+	@Override
 	/**
-	 * @return subqueries included in lookup
+	 * @return parameters as a URL encoded String
 	 */
-	public Inc[] getIncs() {
-		return incs;
-	}
-
-	/**
-	 * @param incs 	subqueries included in lookup
-	 */
-	public void setIncs(Inc[] incs) {
-		this.incs = incs;
+	public String getParameters() {
+		if (super.entity == null)
+			return null;
+		return String.format("%s/%s", super.entity.toString(), mbid);
 	}
 }

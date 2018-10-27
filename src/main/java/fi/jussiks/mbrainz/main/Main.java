@@ -1,6 +1,18 @@
 package fi.jussiks.mbrainz.main;
 
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.search.BooleanClause;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import fi.jussiks.mbrainz.enums.Entity;
+import fi.jussiks.mbrainz.enums.Inc;
 import fi.jussiks.mbrainz.enums.ResultFormat;
 import fi.jussiks.mbrainz.request.MBrainzLookup;
 import fi.jussiks.mbrainz.request.MBrainzQuery;
@@ -39,19 +51,55 @@ public class Main {
 	/**
 	 * For testing purposes.
 	 * @param args
+	 * @throws ParseException 
+	 * @throws UnsupportedEncodingException 
+	 * @throws MalformedURLException 
 	 */
-	public static void main(String[] args) {
-		MBrainzLookup lookup = new MBrainzLookup("mbrainzclient", "0.1", "kerosiini@gmail.com");
+	public static void main(String[] args) throws ParseException, MalformedURLException, UnsupportedEncodingException {
+		JsonObject res = new JsonObject();
+		JsonArray resArr = new JsonArray();
+		JsonParser parser = new JsonParser();
+		
+		MBrainzLookup lookup = new MBrainzLookup("mbrainzclient", "0.1", "https://github.com/jussiks/mbrainz");
 		lookup.setEntity(Entity.ARTIST);
 		lookup.setMbid(artistIds[1]);
 		lookup.setResultFormat(ResultFormat.JSON);
-		System.out.println(lookup.doRequest());
+		//System.out.println(lookup.doRequest());
 		
-		MBrainzQuery mbq = new MBrainzQuery("mbrainzclient", "0.1", "kerosiini@gmail.com");
+		/*
+		MBrainzQuery mbq = new MBrainzQuery("mbrainzclient", "0.1", "https://github.com/jussiks/mbrainz");
 		mbq.addQuery("artist", "rytmihäiriö");
 		mbq.addQuery("country", "FI");
 		mbq.setEntity(Entity.ARTIST);
 		System.out.println(mbq.doRequest());
+		*/
+		
+		//TODO: escape lucene chars
+		MBrainzQuery mbq = new MBrainzQuery("mbrainzclient", "0.1", "https://github.com/jussiks/mbrainz");
+		//System.out.println(mbq.doRequest(Entity.ARTIST, "artist:rytmihäiriö OR artist:\"kakka-hätä 77\"", Inc.RECORDINGS));
+		mbq.setEntity(Entity.ARTIST);
+		
+		//TODO: this does not work
+		mbq.addQuery("artist", "kakka-hätä 77");
+		System.out.println(mbq.getParameters());
+		System.out.println(mbq.getQuery());
+		//System.out.println(mbq.doRequest());
+		
+		mbq = new MBrainzQuery(
+				"mbrainzclient", "0.1", "https://github.com/jussiks/mbrainz",
+				Entity.ARTIST);
+		//System.out.println(mbq.doRequest(Entity.ARTIST, "artist:rytmihäiriö OR artist:\"kakka-hätä 77\"", Inc.RECORDINGS));
+		
+		//TODO: this does not work
+		mbq.addQuery("artist", "queen", BooleanClause.Occur.SHOULD);
+		mbq.addQuery("artist", "nirvana", BooleanClause.Occur.MUST);
+		System.out.println(mbq.getParameters());
+		System.out.println(mbq.getQuery());
+		res = parser.parse(mbq.doRequest()).getAsJsonObject();
+		resArr = res.get("artists").getAsJsonArray();
+		
+		for (JsonElement elem : resArr)
+			System.out.println(elem.getAsJsonObject().get("name").getAsString());
 		
 
 	}

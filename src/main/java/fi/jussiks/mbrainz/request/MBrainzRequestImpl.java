@@ -3,6 +3,7 @@ package fi.jussiks.mbrainz.request;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -11,15 +12,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import fi.jussiks.mbrainz.enums.Entity;
 import fi.jussiks.mbrainz.enums.Inc;
 import fi.jussiks.mbrainz.enums.ResultFormat;
 
+/**
+ * Base class for lookups and queries.
+ * 
+ * @author jussi
+ * TODO: method for setting credentials
+ */
 public abstract class MBrainzRequestImpl implements MBrainzRequest {
-	private static final String API_URL = "http://musicbrainz.org/ws/2";
 	private String appName;
 	private String version;
 	private String contact;
+	
+	private static final String API_URL = "http://musicbrainz.org/ws/2";
 	private ResultFormat resultFormat = ResultFormat.JSON; // use json as default
+	protected Entity entity;
+	protected Inc[] incs;
 	
 	/**
 	 * Initializes a new MBrainzRequest object. Each request needs to include contact
@@ -35,15 +46,20 @@ public abstract class MBrainzRequestImpl implements MBrainzRequest {
 		this.contact = contact;
 	}
 	
-	protected String doRequest(String params, Inc... incs) {
-		if (incs != null) {
-			params += "?inc=";
-			List<Inc> incList = Arrays.asList(incs);
-			params += incList.stream()
-					.map(Inc::toString)
-					.collect(Collectors.joining("+"));
-		}
-		return doGETRequest(params);
+	public MBrainzRequestImpl(String appName, String version, String contact, Entity entity) {
+		this(appName, version, contact);
+		this.entity = entity;
+	}
+
+	public MBrainzRequestImpl(String appName, String version, String contact, Entity entity, Inc[] incs) {
+		this(appName, version, contact, entity);
+		this.incs = incs;
+		
+	}
+
+	@Override
+	public String doRequest() {
+		return doGETRequest();
 	}
 	
 	/**
@@ -51,12 +67,10 @@ public abstract class MBrainzRequestImpl implements MBrainzRequest {
 	 * @param paramString	path and parameters of the GET request
 	 * @return service response as a String
 	 */
-	protected String doGETRequest(String paramString) {
-		String urlString = String.format("%s/%s", API_URL, paramString);
+	private String doGETRequest() {
 		HttpURLConnection connection = null;
-		System.out.println(urlString);
 		try {
-			URL url = new URL(urlString);
+			URL url = getURL();
 			connection = (HttpURLConnection) url.openConnection();
 			connection.setRequestMethod("GET");
 			connection.setRequestProperty("User-Agent", getUserAgent());
@@ -118,5 +132,78 @@ public abstract class MBrainzRequestImpl implements MBrainzRequest {
 	 */
 	public void setResultFormat(ResultFormat resultFormat) {
 		this.resultFormat = resultFormat;
+	}
+	
+	@Override
+	public URL getURL() throws MalformedURLException, UnsupportedEncodingException {
+		String urlString = String.format("%s/%s", API_URL, getParameters());
+		if (incs != null) {
+			urlString += "?inc=";
+			List<Inc> incList = Arrays.asList(incs);
+			urlString += incList.stream()
+					.map(Inc::toString)
+					.collect(Collectors.joining("+"));
+		}
+		return new URL(urlString);
+	}
+
+	@Override
+	public String getAppName() {
+		return appName;
+	}
+
+	@Override
+	public void setAppName(String appName) {
+		this.appName = appName;
+	}
+
+	@Override
+	public String getVersion() {
+		return version;
+	}
+
+	@Override
+	public void setVersion(String version) {
+		this.version = version;
+	}
+
+	@Override
+	public String getContact() {
+		return contact;
+	}
+
+	@Override
+	public void setContact(String contact) {
+		this.contact = contact;
+	}
+
+	@Override
+	public Entity getEntity() {
+		return entity;
+	}
+
+	@Override
+	public void setEntity(Entity entity) {
+		this.entity = entity;
+	}
+
+	@Override
+	/**
+	 * @return subqueries included in lookup
+	 */
+	public Inc[] getIncs() {
+		return incs;
+	}
+
+	@Override
+	/**
+	 * @param incs 	subqueries included in lookup
+	 */
+	public void setIncs(Inc[] incs) {
+		this.incs = incs;
+	}
+
+	public static String getApiUrl() {
+		return API_URL;
 	}
 }
