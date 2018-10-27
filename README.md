@@ -4,10 +4,10 @@ Java maven project for performing queries and lookups on MusicBrainz database us
 
 [MusicBrainz API documentation](https://musicbrainz.org/doc/Development/XML_Web_Service/Version_2)
   
-###Dependencies  
+### Dependencies  
 Apaches Lucene library (see pom.xml)
 
-###Examples
+### Examples
 
 Looking up an artist with MusicBrainz id.
 ```java
